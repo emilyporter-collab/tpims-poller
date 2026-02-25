@@ -1,0 +1,29 @@
+name: TPIMS Poller
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'  # Every 5 minutes
+  workflow_dispatch: {}     # Manual trigger
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Write GCP credentials
+        run: echo '${{ secrets.GCP_CREDENTIALS }}' > /tmp/gcp-creds.json
+        env:
+          GCP_CREDENTIALS: ${{ secrets.GCP_CREDENTIALS }}
+
+      - name: Poll TPIMS and insert to BigQuery
+        run: python poller.py
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcp-creds.json
