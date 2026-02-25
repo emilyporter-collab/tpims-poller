@@ -27,3 +27,8 @@ jobs:
         run: python poller.py
         env:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcp-creds.json
+
+      - name: Auth failure notice
+        if: failure()
+        run: |
+          echo "::error::TPIMS poller failed. If this is an auth error, re-run: gcloud auth application-default login, then update the GCP_CREDENTIALS secret at https://github.com/emilyporter-collab/tpims-poller/settings/secrets/actions"
