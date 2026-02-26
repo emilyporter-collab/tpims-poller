@@ -2,12 +2,13 @@ name: TPIMS Poller
 
 on:
   schedule:
-    - cron: '*/5 * * * *'  # Every 5 minutes
-  workflow_dispatch: {}     # Manual trigger
+    - cron: '0 */6 * * *'    # Safety net: restart every 6 hours
+  workflow_dispatch: {}       # Manual trigger
 
 jobs:
   poll:
     runs-on: ubuntu-latest
+    timeout-minutes: 350      # ~5h50m max
     steps:
       - uses: actions/checkout@v4
 
@@ -23,8 +24,18 @@ jobs:
         env:
           GCP_CREDENTIALS: ${{ secrets.GCP_CREDENTIALS }}
 
-      - name: Poll TPIMS and insert to BigQuery
-        run: python poller.py
+      - name: Poll TPIMS in a loop (every 5 min for ~5.5 hours)
+        run: |
+          export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-creds.json
+          ITERATIONS=66  # 66 x 5min = 330min = 5.5h
+          for i in $(seq 1 $ITERATIONS); do
+            echo ""
+            echo "=== Poll iteration $i/$ITERATIONS at $(date -u) ==="
+            python poller.py || echo "::warning::Poll iteration $i failed"
+            if [ $i -lt $ITERATIONS ]; then
+              sleep 300  # 5 minutes
+            fi
+          done
         env:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcp-creds.json
 
